@@ -1,4 +1,4 @@
-use wasm_bindgen::prelude::*;
+// use wasm_bindgen::prelude::*;
 
 static ROUND_3_MATRIX: [[i32; 2]; 9] = [
     [-1, -1],
@@ -22,44 +22,38 @@ static CLOCKWISE_DELTAS: [[i32; 2]; 8] = [
     [-1, 0],
     [-1, -1],
 ];
+static CLOCKWISE_INDEX_TABLE: [[usize; 3]; 3] = [[7, 0, 1], [6, 8, 2], [5, 4, 3]];
 
-fn get_clockwise_index(dx: &i32, dy: &i32) -> u32 {
-    match dx {
-        0 => match dy {
-            0 => panic!("invalid clockwise delta"),
-            1 => 4,
-            -1 => 0,
-            _ => panic!("invalid clockwise delta"),
-        },
-        1 => match dy {
-            0 => 2,
-            1 => 3,
-            -1 => 1,
-            _ => panic!("invalid clockwise delta"),
-        },
-        -1 => match dy {
-            0 => 6,
-            1 => 5,
-            -1 => 7,
-            _ => panic!("invalid clockwise delta"),
-        },
-        _ => panic!("invalid clockwise delta"),
+fn get_clockwise_index(dx: &i32, dy: &i32) -> usize {
+    CLOCKWISE_INDEX_TABLE[(dx + 1) as usize][(dy + 1) as usize]
+}
+
+fn get_next_delta(matrix: &MatrixData, x: i32, y: i32, d_prev_x: i32, d_prev_y: i32) -> [i32; 2] {
+    let prev_index = get_clockwise_index(&d_prev_x, &d_prev_y);
+    let len = CLOCKWISE_DELTAS.len();
+    for index in 0..len {
+        let check_delta = CLOCKWISE_DELTAS[(index + prev_index + 1) % len];
+        if check_value(&matrix, x + check_delta[0], y + check_delta[1]) {
+            return check_delta;
+        }
     }
+    CLOCKWISE_DELTAS[prev_index as usize]
 }
 
 struct MatrixData {
-    data: Vec<bool>,
+    data: Vec<u8>,
     width: i32,
+    // height: i32,
 }
 
 fn check_value(matrix: &MatrixData, x: i32, y: i32) -> bool {
     if x > matrix.width || x * y >= matrix.data.len() as i32 {
         return false;
     }
-    matrix.data[(matrix.width * y + x) as usize]
+    matrix.data[(matrix.width * y + x) as usize] != 0
 }
 
-fn sum_around(matrix: &MatrixData, x: i32, y: i32) -> i32 {
+fn sum_around(matrix: &MatrixData, x: i32, y: i32) -> u8 {
     let mut sum = 0;
     for offset in CLOCKWISE_DELTAS {
         if check_value(matrix, x + offset[0], y + offset[1]) {
@@ -72,7 +66,7 @@ fn sum_around(matrix: &MatrixData, x: i32, y: i32) -> i32 {
 fn get_start(matrix: &MatrixData) -> [i32; 2] {
     for (i, px) in matrix.data.iter().enumerate() {
         let i = i as i32;
-        if px.clone() {
+        if *px == 1 {
             return [i % matrix.width, i / matrix.width];
         }
     }
@@ -151,4 +145,4 @@ fn calc_bezier_control_point(
 
 // TODO main fn
 // #[wasm_bindgen]
-// pub fn trace_path(matrix: &Vec<bool>, smooth_ratio:i32)->(){}
+// pub fn trace_path(matrix: &Vec<u8>, smooth_ratio:i32)->(){}
